@@ -2,11 +2,11 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: PAC-18
+  name: pipelinerun-generic
   annotations:
     # The event we are targeting as seen from the webhook payload
     # this can be an array too, i.e: [pull_request, push]
-    pipelinesascode.tekton.dev/on-event: "[pull_request, push]"
+    pipelinesascode.tekton.dev/on-event: "pull_request"
 
     # The branch or tag we are targeting (ie: main, refs/tags/*)
     pipelinesascode.tekton.dev/on-target-branch: "main"
@@ -40,7 +40,6 @@ spec:
       - name: revision
     workspaces:
       - name: source
-      - name: basic-auth
     tasks:
       - name: fetch-repository
         taskRef:
@@ -49,8 +48,6 @@ spec:
         workspaces:
           - name: output
             workspace: source
-          - name: basic-auth
-            workspace: basic-auth
         params:
           - name: url
             value: $(params.repo_url)
@@ -72,6 +69,7 @@ spec:
               image: registry.access.redhat.com/ubi9/ubi-micro
               workingDir: $(workspaces.source.path)
               script: |
+                test -e LICENSE || exit 1
                 exit 0
   workspaces:
   - name: source
@@ -82,8 +80,3 @@ spec:
         resources:
           requests:
             storage: 1Gi
-  # This workspace will inject secret to help the git-clone task to be able to
-  # checkout the private repositories
-  - name: basic-auth
-    secret:
-      secretName: "{{ git_auth_secret }}"
